@@ -33,22 +33,19 @@ class Schwarzschild:
         """Calculate the Christoffel symbols for the Schwarzschild metric."""
 
         coord_list = [self.t, self.r, self.theta, self.phi]
-
-        # Calculate the inverse metric tensor
         g_inv = self.g.inv()
-
         christoffel_symbols = []
 
         for i in range(4):
             for j in range(4):
                 for k in range(4):
-                    sum = 0
+                    total = 0
                     for m in range(4):
-                        sum += (0.5 * (sym.diff(self.g[i, j], coord_list[k]) +
-                                       sym.diff(self.g[i, k], coord_list[j]) -
-                                       sym.diff(self.g[j, k], coord_list[i]))
-                                * g_inv[k, m])
-                    christoffel_symbols.append(sum)
+                        total += (0.5 * (sym.diff(self.g[i, m], coord_list[k]) +
+                                         sym.diff(self.g[i, m], coord_list[j]) -
+                                         sym.diff(self.g[i, m], coord_list[i]))
+                                  * g_inv[m, k])
+                    christoffel_symbols.append(total)
 
         christoffel_symbols = np.array(christoffel_symbols)
         christoffel_symbols = np.reshape(christoffel_symbols, (4, 4, 4))
@@ -72,27 +69,6 @@ class Schwarzschild:
                               christoffel_symbols[0][alpha][beta] * u[alpha] * u[beta] * u[mu])
 
         return a.tolist()
-
-    # def calc_geodesic(self, initial_condition, step_size, num_steps):
-    #     """Calculate the trajectory of a geodesic using Euler's method."""
-    #     # Get the geodesic equations
-    #     geodesic_equations = self.calc_geodesic_equations()
-    #
-    #     # Convert the symbolic equations into numerical functions
-    #     num_geodesic_equations = [sym.lambdify((self.t, self.r, self.theta, self.phi), eq) for eq in geodesic_equations]
-    #
-    #     # Initialize the trajectory array with the initial condition
-    #     trajectory = sym.zeros(num_steps + 1, 4)
-    #     trajectory[0] = initial_condition
-    #
-    #     # Calculate the trajectory
-    #     for i in range(num_steps):
-    #         for j in range(4):
-    #             # Substitute the values of the coordinates into the numerical geodesic equations
-    #             # and evaluate the resulting equation
-    #             trajectory[i + 1, j] = trajectory[i, j] + step_size * num_geodesic_equations[j](*trajectory[i])
-    #
-    #     return trajectory
 
 
 initial_condition = sym.Matrix([0, 10, 0, 0])
