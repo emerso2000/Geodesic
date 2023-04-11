@@ -1,13 +1,22 @@
-#version 450 core
-layout (location = 0) in vec3 vertexPosition;
-layout (location = 1) in vec2 vertexTexCoords;
-layout (location = 0) out vec2 fragmentTexCoords;
+#version 450
+
 uniform mat4 model;
-uniform mat4 view;
 uniform mat4 projection;
 
-void main()
+layout(std430, binding = 0) buffer positions
 {
-    gl_Position = projection * view * model * vec4(vertexPosition, 1.0);
-    fragmentTexCoords = vec2(vertexTexCoords.x, 1.0 - vertexTexCoords.y);
+  vec4 data[];
+};
+
+layout(location = 0) in vec3 position;
+
+out gl_PerVertex
+{
+  vec4 gl_Position;
+  float gl_PointSize;
+  float gl_ClipDistance[];
+};
+
+void main() {
+	gl_Position = vec4(data[gl_InstanceID].xyz, 1.0);
 }
