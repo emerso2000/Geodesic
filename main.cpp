@@ -15,10 +15,10 @@
  * work group size, we'll also need to know the work group size so we can find out how many
  * work groups to dispatch
  */
-#define NUM_PARTICLES 100
+#define NUM_PARTICLES 1000000
 
-// This MUST match with local_size_x inside cursor.glsl
-#define WORK_GROUP_SIZE 10
+// This MUST match with local_size_x inside NBodoes.glsl
+#define WORK_GROUP_SIZE 64
 
 #define SCREENX 1920
 #define SCREENY 1080
@@ -53,7 +53,7 @@ int main(int argc, char **argv)
 {
 	srand(time(0));
 
-	const GLfloat delta_time = 0.01f;
+	const GLfloat delta_time = 0.1f;
 
 	// Window Setup
 	glfwInit();
@@ -68,8 +68,8 @@ int main(int argc, char **argv)
 	gladLoadGL();
 	
 	// Setup Initial Positions/Velocities
-	glm::vec3 positions[NUM_PARTICLES];
-	glm::vec3 velocities[NUM_PARTICLES];
+	glm::vec4 *positions = new glm::vec4[NUM_PARTICLES];
+	glm::vec4 *velocities = new glm::vec4[NUM_PARTICLES];
 
 	std::random_device rd;
 	std::mt19937 gen(rd());
@@ -88,11 +88,11 @@ int main(int argc, char **argv)
 		float velx = r * sin(theta) * cos(phi);
 		float vely = r * sin(theta) * sin(phi);
 		float velz = r * cos(theta);
+		float velt = r * sin(theta);
 
-		positions[i] = glm::vec3(velx, vely, velz);
-		velocities[i] = glm::vec3(0.0f, 0.0f, 0.0f);
+		positions[i] = glm::vec4(velx, vely, velz, velt);
+		velocities[i] = glm::vec4(0.05f, 0.05f, 0.05f, 0.05f);
 	}
-
 
 	GLuint vao, pos, timebuffer, vel;
 
@@ -103,8 +103,8 @@ int main(int argc, char **argv)
 	glCreateBuffers(1, &timebuffer);
 	glCreateBuffers(1, &vel);
 
-	glNamedBufferData(vel, sizeof(velocities), velocities, GL_STATIC_DRAW);
-	glNamedBufferData(pos, sizeof(positions), positions, GL_STATIC_DRAW);
+	glNamedBufferData(vel, sizeof(*velocities) * NUM_PARTICLES, velocities, GL_STATIC_DRAW);
+	glNamedBufferData(pos, sizeof(*positions) * NUM_PARTICLES, positions, GL_STATIC_DRAW);
 	glNamedBufferData(timebuffer, sizeof(GLfloat), &delta_time, GL_DYNAMIC_DRAW);
 
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, pos);
@@ -115,7 +115,7 @@ int main(int argc, char **argv)
 	 */
 	const GLchar *vertCode = LoadShader("../shader_files/shader.vert");
 	const GLchar *fragCode = LoadShader("../shader_files/shader.frag");
-	const GLchar *computeCode = LoadShader("../shader_files/NBodies.glsl");
+	const GLchar *computeCode = LoadShader("../shader_files/Schwarzschild.glsl");
 
 	GLuint vertShader = glCreateShader(GL_VERTEX_SHADER);
 	GLuint fragShader = glCreateShader(GL_FRAGMENT_SHADER);
@@ -174,12 +174,13 @@ int main(int argc, char **argv)
 		glfwPollEvents();
 
 		glUseProgram(computeProgram);
-		glDispatchCompute(NUM_PARTICLES / WORK_GROUP_SIZE, 1, 1);
+		glDispatchCompute(std::ceil(NUM_PARTICLES / WORK_GROUP_SIZE), 1, 1);
 
 		/**
 		 * Draw the particles
 		 */
 		glUseProgram(shaderProgram);
+	    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 		glDrawArraysInstanced(GL_POINTS, 0, 1, NUM_PARTICLES);
 
 		glfwSwapBuffers(window);
@@ -191,6 +192,9 @@ int main(int argc, char **argv)
 	delete[] vertCode;
 	delete[] fragCode;
 	delete[] computeCode;
+
+	delete velocities;
+	delete positions;
 
 	// Window Shutdown
 	glfwDestroyWindow(window);
